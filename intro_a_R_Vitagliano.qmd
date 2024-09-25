@@ -1,0 +1,312 @@
+---
+title: "intro_a_R_Vitagliano"
+format: html
+editor: visual
+---
+
+**TP Final**
+
+1.  **Pregunta-problema.**
+
+¿Cómo varía la distribución de la variable "¿En qué año ingresaste a la carrera?" en la encuesta 1 y en la encuesta 2? ¿Qué forma tienen ambas distribuciones?
+
+¿Varían las espectatativas del curso según los años de ingreso a la carrera?
+
+2.  **Descripción de los pasos realizados para encarar el problema, incluyendo las dificultades o inconveniencias que hayan tenido.** 
+
+La primera gran dificultad que tuve para encarar el problema fue "no poder ver" las bases de datos. Intenté poder pensar en abstracción y usar funciones como glimpse(data) y dim(data) pero no me sirivió al momento de construir una pregunta-problema. Para eso, necesité si o si ir a excel. No usé funciones pero como las bases eran chicas, sí las marqué. Una vez que llegué a la primera pregunta-problema, sí vine a trabajar a R.
+
+Usé las páginas que vimos <https://raw.githubusercontent.com/Financial-Times/chart-doctor/main/visual-vocabulary/poster.png> y <https://datavizproject.com/data-type/tag-cloud/> para pensar cómo graficar. Los pasos que siguieron fueron bastante desordenados. Me parece que las preguntas que me hice fueron demasiado ambiciosas para mi conocimiento y debería haberme concentrado en preguntas-problemas que vimos en el curso. Cuando me di cuenta ya fue tarde y no tenía más tiempo. Igualmente estuvo buenísimo. Fue un genial primer acercamiento donde me fui sorprendiendo con todo lo que se podía hacer!!!!
+
+Para llegar a los chunks usaba como base alguno que habíamos visto en clase e iba probando cambiarle elementos para aceracarme a lo que quería y después le tiraba a Chat GPT los errores que me aparecían. También, a medida que avanzaba el ejercicio, le fui preguntando cómo hacer cosas que se me ocurrían y fui mezclando con los chunks que habíamos visto en clase.
+
+**Importación de las bases de datos:**
+
+```{r}
+
+library(tidyverse)
+library(ggwordcloud)
+library(tm) 
+library(tidytext)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+#Me pasó que instalé demasiaddas librerías pero porque no sabía cómo solucionar errores y le iba preguntando a Chat GPT!!
+```
+
+```{r}
+data1 <- read.csv("Encuesta 1.csv", sep = ";") #tuve que poner separado por una , porque no me lo leía bien sino
+data2 <- read.csv("Encuesta 2.csv", sep = ";") #tuve que poner separado por una , porque no me lo leía bien sino
+```
+
+**Limpieza y transformación con Tidyvers**
+
+Dejamos solo los casos completos de las dos encuestas:
+
+```{r}
+data_1 <- data1 %>%
+  filter(if_all(everything(), ~ !is.na(.) & . != "")) %>%  # Mantiene las filas no vacías
+  filter(`X.En.qué.año.ingresaste.a.la.carrera.` != 4)  
+data_2 <- data2 %>%
+  filter(if_all(everything(), ~ !is.na(.) & . != ""))
+```
+
+Ahora procedemos a ver un estado de cada base:
+
+Encuesta 1:
+
+```{r}
+glimpse(data_1) # exploramos nombres de columnas, tipo de datos, algunos primeros valores
+dim(data_1) # cantidad de filas y columnas
+```
+
+Encuesta 2:
+
+```{r}
+glimpse(data_2) # exploramos nombres de columnas, tipo de datos, algunos primeros valores
+dim(data_2) # cantidad de filas y columnas
+```
+
+Ahora vamos a adentrarnos en las variables que nos interesan. Vamos a sacar estadísticos descriptivos de la variable "¿En qué año ingresaste a la carrera?" de las dos bases.
+
+```{r}
+frecuencias1 <- as.data.frame(table(data_1$`X.En.qué.año.ingresaste.a.la.carrera.`))
+colnames(frecuencias1) <- c("Año", "Frecuencia1")  # Renombrar columnas
+frecuencias2 <- as.data.frame(table(data_2$`X.En.qué.año.ingresaste.a.la.carrera.`))
+colnames(frecuencias2) <- c("Año", "Frecuencia2")  # Renombrar columnas
+print(frecuencias1)
+print(frecuencias2)
+media1 <- mean(data_1$X.En.qué.año.ingresaste.a.la.carrera.)
+print(media1)
+media2 <- mean(data_2$X.En.qué.año.ingresaste.a.la.carrera.)
+print(media2)
+
+cuartiles_ingreso1 <- quantile(data_1$`X.En.qué.año.ingresaste.a.la.carrera.`, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+cuartiles_ingreso2 <- quantile(data_2$`X.En.qué.año.ingresaste.a.la.carrera.`, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
+
+print(cuartiles_ingreso1)
+print(cuartiles_ingreso2)
+
+```
+
+Graficamos la información:
+
+Encuesta 1:
+
+```{r}
+data_1 %>% 
+  ggplot()+
+  geom_histogram(aes(X.En.qué.año.ingresaste.a.la.carrera.)) +
+  geom_vline(xintercept= media1, color="blue", size=1)+
+  geom_vline(xintercept= cuartiles_ingreso1, color="red", size=1, linetype = "dashed")+
+  geom_text(aes(x=2024, y=15, label="Media"), color="blue")+
+  geom_text(aes(x=2024, y=13, label="Cuartiles"), color="red")+
+  theme_minimal()+
+  labs(title="Distribución de año de ingreso a la facultad de la Encuesta 1", subtitle=paste0("Media1: ",round(media1,1)))
+```
+
+Encuesta 2:
+
+```{r}
+data_2 %>% 
+  ggplot()+
+  geom_histogram(aes(X.En.qué.año.ingresaste.a.la.carrera.)) +
+  geom_vline(xintercept= media2, color="blue", size=1)+
+  geom_vline(xintercept= cuartiles_ingreso2, color="red", size=1, linetype = "dashed")+
+  geom_text(aes(x=2024, y=6, label="Media"), color="blue")+
+  geom_text(aes(x=2024, y=5, label="Cuartiles"), color="red")+
+  theme_minimal()+
+  labs(title="Distribución de año de ingreso a la facultad de la Encuesta 2", subtitle=paste0("Media2: ",round(media2,1)))
+```
+
+Pero sentía que era mejor verlo en conjunto. Hice varias pruebas, con etiquetas, sin... y llegué a este gráfico que solo muesta las dos formas de la distribución y la media de cada una:
+
+```{r}
+# Siempre partir de crear tablas de frecuencias
+frecuencias1 <- as.data.frame(table(data_1$`X.En.qué.año.ingresaste.a.la.carrera.`))
+colnames(frecuencias1) <- c("Año", "Frecuencia1") 
+
+frecuencias2 <- as.data.frame(table(data_2$`X.En.qué.año.ingresaste.a.la.carrera.`))
+colnames(frecuencias2) <- c("Año", "Frecuencia2")
+
+# Convertir la columna Año a numérico (esto no sé si era necesario pero me lo tiró Chat GPT por un error)
+frecuencias1$Año <- as.numeric(as.character(frecuencias1$Año))
+frecuencias2$Año <- as.numeric(as.character(frecuencias2$Año))
+
+# Unir las dos tablas de frecuencia en un nuevo objeto: frecuencias_combinadas
+frecuencias_combinadas <- merge(frecuencias1, frecuencias2, by = "Año", all = TRUE)
+
+# Transformar a formato largo
+frecuencias_largas <- frecuencias_combinadas %>%
+  pivot_longer(cols = c(Frecuencia1, Frecuencia2), 
+               names_to = "Encuesta", 
+               values_to = "Frecuencia")
+
+# Establecer la frecuencia a 0 si es NA (esto surgió posteriormente, porque quería que todos los puntos estuviesen conectados)
+frecuencias_largas <- frecuencias_largas %>%
+  mutate(Frecuencia = ifelse(is.na(Frecuencia), 0, Frecuencia))
+
+# Graficar
+ggplot(frecuencias_largas, aes(x = Año, y = Frecuencia, group = Encuesta, color = Encuesta)) + 
+  geom_line(size = 1) + 
+  geom_point(size = 2) +  # Agregar puntos en las líneas
+  
+  # Líneas para la media
+  geom_vline(xintercept = media1, color = "violet", linetype = "dashed") + #agrego media1
+  geom_vline(xintercept = media2, color = "pink", linetype = "dashed") + #agrego media2
+  
+  # Etiquetas para medias
+  geom_text(aes(x =2020, y = 13, label = "Media Encuesta 1"), color = "violet", vjust = -1) +
+  geom_text(aes(x =2017, y = 14, label = "Media Encuesta 2"), color = "pink", vjust = -1) +
+  
+  # Escalas y límites
+  scale_color_manual(values = c("Frecuencia1" = "violet", "Frecuencia2" = "pink"), 
+                     labels = c("Encuesta 1", "Encuesta 2")) + 
+  labs(title = "Frecuencias por Año de Ingreso a la carrera", 
+       y = "Frecuencia", color = "Encuesta") + 
+  scale_x_continuous(breaks = seq(min(frecuencias_largas$Año, na.rm = TRUE), 
+                                  max(frecuencias_largas$Año, na.rm = TRUE), by = 4)) +
+  scale_y_continuous(limits = c(0, 15)) +  # Establecer límites del eje y
+  theme_minimal()  # Tema minimalista
+
+```
+
+Nos quedamos con la encuesta 1 para hacer las nubes de palabras por cuartil:
+
+**1997-2012/ 2013-2018/ 2019-2020/ 2021-2024**
+
+```{r}
+colnames(data_1)
+```
+
+```{r}
+# Filtrar los datos de la Encuesta 1 y crear segmentos de ingreso
+data_1 <- data_1 %>%
+  mutate(Segmento_Ingreso1 = case_when(
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 1997 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2012 ~ "1997-2012",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2013 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2018 ~ "2013-2018",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2019 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2020 ~ "2019-2020",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2021 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2024 ~ "2021-2024",
+    TRUE ~ NA_character_
+  ))
+
+# Crear un data frame con las respuestas y los segmentos
+data_filtrada1 <- data_1 %>%
+  filter(!is.na(Segmento_Ingreso1)) %>%
+  select(Segmento_Ingreso1, `X.Qué.esperas.del.curso.`)
+
+# Procesar el texto para cada segmento de edad
+nube_palabras <- data_filtrada1 %>%
+  unnest_tokens(word, `X.Qué.esperas.del.curso.`) %>%
+  filter(nchar(word) >= 5 | word %in% c("CV", "cv", "Cv")) %>%  # Incluir "CV"
+  count(Segmento_Ingreso1, word, sort = TRUE) %>%
+  ungroup()
+
+
+# Ajustar frecuencias para evitar superposición
+nube_palabras <- nube_palabras %>%
+  mutate(n = n + runif(n(), 0, 0.5))  # Agregar un pequeño valor aleatorio
+
+# Crear la nube de palabras
+ggplot(nube_palabras, aes(label = word, size = n, color = Segmento_Ingreso1)) +
+  geom_text_wordcloud(max_size = 20, min_size = 2, random.order = FALSE, grid_size=1, grid_margin = 1) +
+  scale_size_area(max_size = 5,9) +
+  theme_minimal() +
+  labs(title = "Nube de Palabras por Segmentos de Edad",
+       subtitle = "Respuestas a '¿Qué esperas del curso?'",
+       color = "Segmento de Ingreso") +
+  facet_wrap(~Segmento_Ingreso1)  # Crea un gráfico separado para cada segmento
+```
+
+Me parecía interesante también hacer un gráfico que muestre a todos los segmentos juntos para ver en qué palabra se repetía más en cada segmento. Muchas palabas se repiten, no llegué a corregir eso!!!
+
+```{r}
+library(tidyverse)
+library(tidytext)
+
+# Filtrar los datos de la Encuesta 1 y crear segmentos de ingreso
+data_1 <- data_1 %>%
+  mutate(Segmento_Ingreso1 = case_when(
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 1997 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2012 ~ "1997-2012",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2013 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2018 ~ "2013-2018",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2019 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2020 ~ "2019-2020",
+    `X.En.qué.año.ingresaste.a.la.carrera.` >= 2021 & `X.En.qué.año.ingresaste.a.la.carrera.` <= 2024 ~ "2021-2024",
+    TRUE ~ NA_character_
+  ))
+
+# Crear un data frame con las respuestas y los segmentos
+data_filtrada1 <- data_1 %>%
+  filter(!is.na(Segmento_Ingreso1)) %>%
+  select(Segmento_Ingreso1, `X.Qué.esperas.del.curso.`)
+
+# Procesar el texto para cada segmento de ingreso
+nube_palabras <- data_filtrada1 %>%
+  unnest_tokens(word, `X.Qué.esperas.del.curso.`) %>%
+  filter(nchar(word) >= 5 | word %in% c("CV", "cv", "Cv")) %>%  # Incluir "CV"
+  count(Segmento_Ingreso1, word, sort = TRUE) %>%
+  ungroup()
+
+# Crear una tabla con la cantidad de segmentos que mencionaron cada palabra
+nube_palabras_segmentos <- nube_palabras %>%
+  group_by(word) %>%
+  summarise(segmentos_mencion = n_distinct(Segmento_Ingreso1), .groups = "drop")  # Corregido el uso de summarise
+
+# Unir las tablas
+nube_final <- nube_palabras %>%
+  left_join(nube_palabras_segmentos, by = "word")  # Sin el símbolo +
+
+# Asignar colores según la cantidad de segmentos que mencionaron la palabra
+ggplot(nube_final, aes(label = word, size = n, color = as.factor(segmentos_mencion))) +
+  geom_text_wordcloud(max_size = 30, min_size = 25, random.order = FALSE, grid_size = 2) +  # Tamaños ajustados
+  scale_color_manual(values = c("1" = "red", "2" = "green", "3" = "lightblue", "4" = "darkviolet")) +  # Colores para 1, 2, 3, o 4 segmentos
+  theme_minimal() +
+  labs(title = "Nube de Palabras de todos los segmentos juntos",
+       subtitle = "Colores según cuántos segmentos mencionaron cada palabra",
+       color = "Cantidad de Segmentos")
+
+```
+
+Después de hacer las nubes de palabras sobre la variable "X.Qué.esperas.del.curso." por los sementos (cuartiles) de "año de ingreso a la carrera", me pareció que para seguir indangando en la pregunta-problema podía ser interesante pensar en una dimensión específica como por ejemplo: productividad. Pensé entonces en la posibilidad de armar una escala de productividad asignando a cada palabra recurrente (que saqué de los gráficos de nubes de palabras anteriores) un número. Una vez armada la escala, y convertida en variable, la crucé con "año de ingreso a la carrera" buscando indagar en la correlación entre ambas.
+
+```{r}
+data_1 <- data.frame(
+  `X.En.qué.año.ingresaste.a.la.carrera.` = sample(1997:2024, 100, replace = TRUE),
+  `X.Qué.esperas.del.curso.` = sample(c("sociología", "aprendizaje", "trabajo", "insertarme", "comunicar", "profesionales", "laboral", "análisis", "investigar", "profesionalmente", "herramienta", "gusta", "aprender", "sirva", "formación", "lenguaje"), 100, replace = TRUE)
+)
+
+# Crear un diccionario de palabras relacionadas con productividad
+productividad <- data_frame(
+  word = c("sociología", "aprendizaje", "trabajo", "insertarme", "comunicar", "profesionales", "laboral", "análisis", "investigar", "profesionalmente", "herramienta", "gusta", "aprender", "sirva", "formación", "lenguaje"),
+  productividad = c(0, -1, 1, 1, 0, 1, 1, -1, 0, 1, 0, -1, -1, 1, -1, 0)  # Puntajes asignados aribtrariamente y sin análsis!!! pero fue una prueba!!!
+)
+
+# Transformar las expectativas en puntajes
+data_1 <- data_1 %>%
+  unnest_tokens(word, `X.Qué.esperas.del.curso.`) %>%  # Descomponer en palabras
+  inner_join(productividad, by = "word") %>%  # Asignar la productividad
+  group_by(`X.En.qué.año.ingresaste.a.la.carrera.`) %>%  # Agrupar por año de ingreso
+  summarise(aplicar_puntaje = sum(productividad, na.rm = TRUE)) %>%  # Sumar puntajes
+  ungroup()
+
+# Graficar la correlación
+ggplot(data_1, aes(x = `X.En.qué.año.ingresaste.a.la.carrera.`, y = aplicar_puntaje)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Correlación entre Año de Ingreso a la carrera y nivel de productividad en relación a las expectativas sobre el curso", 
+       x = "Año de Ingreso",
+       y = "Puntaje de nivel de productividad") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 8, face = "bold", hjust = 0.5)  # Tamaño, formato y centrado del título
+  )
+
+```
+
+**Resultados:**
+
+Las distribuciones de la variable "¿En qué año ingresaste a la carrera?" de la encuesta 1 y de la encuesta 2 tienen una forma similar, multimodal. Sin embargo, la media de la encuesta 2 es más baja que la de la encuesta 1. En el caso de la encuesta 1, la media es 2015.554 y en la encuesta 2: 2013.682.
+
+Las espectativas del curso no parecen variar contundemente según los años de ingreso a la carrera. Las nubes de palabras son bastante similares.
+
+Lo mismo ocurre con el último gráfico. El nivel de productividad armado a partir de la variable "X.Qué.esperas.del.curso." no parece variar según el año de ingreso a la carrera.
